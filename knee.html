@@ -1,0 +1,456 @@
+// Start<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>膝关节 3D 解剖 · 可显隐</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #0b111c;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #cfe0ff;
+  }
+  canvas { display: block; }
+
+  #title {
+    position: fixed; top: 22px; left: 24px;
+    font-size: 17px; letter-spacing: 2px; font-weight: 600;
+    color: #e8f1ff; text-shadow: 0 0 20px rgba(90,150,255,.6);
+    pointer-events: none;
+  }
+  #subtitle {
+    position: fixed; top: 48px; left: 24px;
+    font-size: 11px; letter-spacing: 1px; color: #5d7aa6;
+    pointer-events: none;
+  }
+
+  /* ---- 显隐面板 ---- */
+  #partsPanel {
+    position: fixed; top: 22px; right: 24px;
+    width: 200px; padding: 14px 16px 16px;
+    background: rgba(16,24,38,.82);
+    border: 1px solid rgba(110,168,255,.22);
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+  #partsPanel h4 {
+    font-size: 11px; font-weight: 500; letter-spacing: 2px;
+    color: #6f8fbb; margin-bottom: 10px;
+  }
+  #partsPanel label {
+    display: flex; align-items: center; gap: 9px;
+    padding: 5px 6px; border-radius: 7px;
+    font-size: 12px; color: #b6c9e4; cursor: pointer;
+    transition: background .15s;
+    user-select: none;
+  }
+  #partsPanel label:hover { background: rgba(90,150,255,.10); }
+  #partsPanel input[type=checkbox] {
+    appearance: none; width: 14px; height: 14px; flex: none;
+    border: 1.5px solid #3d5a80; border-radius: 4px;
+    background: transparent; cursor: pointer; position: relative;
+    transition: .15s;
+  }
+  #partsPanel input[type=checkbox]:checked {
+    background: #2a7fff; border-color: #5fd7ff;
+    box-shadow: 0 0 8px rgba(60,160,255,.7);
+  }
+  #partsPanel input[type=checkbox]:checked::after {
+    content: ''; position: absolute; left: 4px; top: 1px;
+    width: 3px; height: 7px;
+    border: solid #fff; border-width: 0 1.6px 1.6px 0;
+    transform: rotate(45deg);
+  }
+  #partsPanel .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    margin-left: auto;
+  }
+
+  /* ---- 底部控制 ---- */
+  #panel {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    width: min(480px, calc(100% - 48px));
+    padding: 16px 20px 14px;
+    background: rgba(16,24,38,.84);
+    border: 1px solid rgba(110,168,255,.22);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+  #panel .label {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  #panel .label span:first-child { font-size: 11px; letter-spacing: 1.5px; color: #6f8fbb; }
+  #panel .angle {
+    font-size: 15px; font-weight: 600; color: #5fd7ff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 14px rgba(80,200,255,.7);
+  }
+  input[type=range] {
+    width: 100%; height: 4px; -webkit-appearance: none;
+    background: linear-gradient(90deg, #1f5fbf, #5fd7ff);
+    border-radius: 3px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: #eaf6ff; border: 2px solid #2a7fff; cursor: pointer;
+    box-shadow: 0 0 12px rgba(80,190,255,.95);
+  }
+  .btns { display: flex; gap: 8px; margin-top: 14px; }
+  .btns button {
+    flex: 1; padding: 9px 0; font-size: 12px;
+    color: #bcd4f5; background: rgba(60,110,190,.18);
+    border: 1px solid rgba(110,168,255,.3);
+    border-radius: 9px; cursor: pointer; transition: .18s;
+    font-family: inherit;
+  }
+  .btns button:hover { background: rgba(70,130,220,.34); color: #fff; }
+  .btns button.active {
+    background: rgba(70,150,255,.42); color: #fff;
+    border-color: #5fd7ff;
+  }
+</style>
+</head>
+<body>
+
+<div id="title">膝关节 · 3D 解剖示意</div>
+<div id="subtitle">KNEE JOINT · ANATOMICAL MODEL</div>
+
+<div id="partsPanel">
+  <h4>结构显隐</h4>
+  <label><input type="checkbox" data-part="femur" checked><span>股骨</span><i class="dot" style="background:#eee8d8"></i></label>
+  <label><input type="checkbox" data-part="tibia" checked><span>胫骨</span><i class="dot" style="background:#eee8d8"></i></label>
+  <label><input type="checkbox" data-part="patella" checked><span>髌骨</span><i class="dot" style="background:#eee8d8"></i></label>
+  <label><input type="checkbox" data-part="cartilage" checked><span>关节软骨</span><i class="dot" style="background:#a8d8f0"></i></label>
+  <label><input type="checkbox" data-part="meniscus" checked><span>半月板</span><i class="dot" style="background:#7fd4c1"></i></label>
+  <label><input type="checkbox" data-part="acl" checked><span>前交叉韧带</span><i class="dot" style="background:#ff6b6b"></i></label>
+  <label><input type="checkbox" data-part="pcl" checked><span>后交叉韧带</span><i class="dot" style="background:#ffa94d"></i></label>
+  <label><input type="checkbox" data-part="mcl" checked><span>内侧副韧带</span><i class="dot" style="background:#9b8bff"></i></label>
+  <label><input type="checkbox" data-part="lcl" checked><span>外侧副韧带</span><i class="dot" style="background:#66d9e8"></i></label>
+  <label><input type="checkbox" data-part="tendon" checked><span>髌腱</span><i class="dot" style="background:#ffe066"></i></label>
+</div>
+
+<div id="panel">
+  <div class="label"><span>屈膝角度 FLEXION</span><span class="angle" id="angleVal">0°</span></div>
+  <input type="range" id="angle" min="0" max="140" value="0" step="1">
+  <div class="btns">
+    <button id="playBtn" class="active">⏸ 暂停演示</button>
+    <button id="resetBtn">↺ 复位</button>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const MAX_ANGLE = 140 * Math.PI / 180;
+
+/* ============ 场景 / 相机 / 渲染器 ============ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b111c);
+scene.fog = new THREE.Fog(0x0b111c, 9, 20);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(3.4, 1.5, 4.2);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2.5;
+controls.maxDistance = 14;
+controls.target.set(0, -0.25, 0);
+
+/* ============ 灯光 ============ */
+scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x1a2230, 1.5));
+
+const key = new THREE.DirectionalLight(0xffffff, 2.4);
+key.position.set(5, 8, 6);
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0x6ea8ff, 1.3);
+fill.position.set(-6, 2, -5);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0x7fffe0, 0.9);
+rim.position.set(0, -5, -7);
+scene.add(rim);
+
+/* ============ 材质 ============ */
+const boneMat = new THREE.MeshStandardMaterial({ color: 0xeee8d8, roughness: 0.62, metalness: 0.04 });
+const cartMat = new THREE.MeshStandardMaterial({
+  color: 0xa8d8f0, roughness: 0.25, metalness: 0.0,
+  transparent: true, opacity: 0.6, side: THREE.DoubleSide
+});
+const menMat = new THREE.MeshStandardMaterial({
+  color: 0x7fd4c1, roughness: 0.35, metalness: 0.05, side: THREE.DoubleSide
+});
+
+/* ============ 部件登记表（用于显隐控制） ============ */
+const parts = {
+  femur: [], tibia: [], patella: [],
+  cartilage: [], meniscus: [],
+  acl: [], pcl: [], mcl: [], lcl: [], tendon: []
+};
+function reg(partName, mesh) {
+  parts[partName].push(mesh);
+  return mesh;
+}
+
+/* ============ 股骨（固定） ============ */
+const femurGroup = new THREE.Group();
+scene.add(femurGroup);
+
+// 股骨干
+const fShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.31, 2.7, 32), boneMat);
+fShaft.position.y = 1.78;
+femurGroup.add(fShaft);
+reg('femur', fShaft);
+
+// 股骨内外侧髁 + 软骨帽
+const condyleGeo = new THREE.SphereGeometry(0.36, 32, 24);
+const cartGeo = new THREE.SphereGeometry(0.375, 32, 16, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
+
+[-0.42, 0.42].forEach((x) => {
+  const c = new THREE.Mesh(condyleGeo, boneMat);
+  c.position.set(x, 0, 0.02);
+  c.scale.set(1, 1.05, 1.35);
+  femurGroup.add(c);
+  reg('femur', c);
+
+  const cart = new THREE.Mesh(cartGeo, cartMat);
+  cart.position.copy(c.position);
+  cart.scale.copy(c.scale);
+  femurGroup.add(cart);
+  reg('cartilage', cart);
+});
+
+/* ============ 胫骨（绕膝关节中心旋转） ============ */
+const tibiaGroup = new THREE.Group();
+scene.add(tibiaGroup);
+
+// 胫骨平台
+const plateau = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.46, 0.2, 32), boneMat);
+plateau.position.y = -0.45;
+tibiaGroup.add(plateau);
+reg('tibia', plateau);
+
+// 胫骨内外侧髁
+[-0.30, 0.30].forEach((x) => {
+  const c = new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 18), boneMat);
+  c.position.set(x, -0.40, 0);
+  c.scale.set(1, 0.6, 1.1);
+  tibiaGroup.add(c);
+  reg('tibia', c);
+});
+
+// 胫骨干
+const tShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.19, 2.3, 32), boneMat);
+tShaft.position.y = -1.68;
+tibiaGroup.add(tShaft);
+reg('tibia', tShaft);
+
+// 胫骨结节
+const tubercle = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), boneMat);
+tubercle.position.set(0, -0.62, 0.42);
+tubercle.scale.set(1, 1.5, 1);
+tibiaGroup.add(tubercle);
+reg('tibia', tubercle);
+
+// 平台软骨层
+const cartPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.50, 0.50, 0.045, 32), cartMat);
+cartPlate.position.y = -0.335;
+tibiaGroup.add(cartPlate);
+reg('cartilage', cartPlate);
+
+// 半月板
+function makeMeniscus(radius, flip) {
+  const g = new THREE.TorusGeometry(radius, 0.058, 10, 36, Math.PI * 1.45);
+  if (flip) g.rotateZ(Math.PI * 1.55);
+  g.rotateX(Math.PI / 2);
+  return new THREE.Mesh(g, menMat);
+}
+const meniscusIn = makeMeniscus(0.27, false);
+meniscusIn.position.set(-0.38, -0.35, 0);
+tibiaGroup.add(meniscusIn);
+reg('meniscus', meniscusIn);
+
+const meniscusOut = makeMeniscus(0.29, true);
+meniscusOut.position.set(0.38, -0.35, 0);
+tibiaGroup.add(meniscusOut);
+reg('meniscus', meniscusOut);
+
+/* ============ 髌骨 ============ */
+const patella = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 18), boneMat);
+patella.scale.set(1.0, 1.4, 0.52);
+patella.position.set(0, 0.52, 0.62);
+scene.add(patella);
+reg('patella', patella);
+
+/* ============ 韧带 ============ */
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+function makeLigament(color, radius) {
+  const g = new THREE.CylinderGeometry(radius, radius, 1, 10);
+  g.translate(0, 0.5, 0);
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.0 });
+  return new THREE.Mesh(g, m);
+}
+function setLigament(mesh, p1, p2) {
+  const dir = new THREE.Vector3().subVectors(p2, p1);
+  const len = dir.length();
+  if (len < 1e-5) return;
+  mesh.position.copy(p1);
+  mesh.scale.set(1, len, 1);
+  mesh.quaternion.setFromUnitVectors(Y_AXIS, dir.normalize());
+}
+
+// 股骨侧附着点（固定）
+const F_ACL = new THREE.Vector3( 0.15, -0.08, -0.16);
+const F_PCL = new THREE.Vector3(-0.16,  0.02, -0.12);
+const F_MCL = new THREE.Vector3(-0.64,  0.14,  0.00);
+const F_LCL = new THREE.Vector3( 0.62,  0.10, -0.06);
+
+// 胫骨侧附着点（局部坐标）
+const T_ACL = new THREE.Vector3( 0.07, -0.42,  0.20);
+const T_PCL = new THREE.Vector3(-0.07, -0.46, -0.26);
+const T_MCL = new THREE.Vector3(-0.50, -1.00,  0.00);
+const T_LCL = new THREE.Vector3( 0.50, -0.88, -0.06);
+
+const ligACL = makeLigament(0xff6b6b, 0.042);
+const ligPCL = makeLigament(0xffa94d, 0.042);
+const ligMCL = makeLigament(0x9b8bff, 0.036);
+const ligLCL = makeLigament(0x66d9e8, 0.034);
+const ligPat = makeLigament(0xffe066, 0.055);
+
+scene.add(ligACL, ligPCL, ligMCL, ligLCL, ligPat);
+reg('acl', ligACL);
+reg('pcl', ligPCL);
+reg('mcl', ligMCL);
+reg('lcl', ligLCL);
+reg('tendon', ligPat);
+
+/* ============ 运动学更新 ============ */
+function updateKnee(theta) {
+  tibiaGroup.rotation.x = theta;
+  tibiaGroup.updateMatrixWorld(true);
+
+  const t = theta / MAX_ANGLE;
+
+  // 髌骨沿股骨滑车沟滑动
+  patella.position.set(0, 0.52 - 0.30 * t, 0.62 + 0.10 * t);
+  patella.rotation.x = -0.35 * t;
+
+  // 韧带动态连接
+  setLigament(ligACL, F_ACL, tibiaGroup.localToWorld(T_ACL.clone()));
+  setLigament(ligPCL, F_PCL, tibiaGroup.localToWorld(T_PCL.clone()));
+  setLigament(ligMCL, F_MCL, tibiaGroup.localToWorld(T_MCL.clone()));
+  setLigament(ligLCL, F_LCL, tibiaGroup.localToWorld(T_LCL.clone()));
+
+  // 髌腱：髌骨下极 → 胫骨结节
+  const pBottom = new THREE.Vector3(
+    patella.position.x,
+    patella.position.y - 0.32,
+    patella.position.z - 0.04
+  );
+  setLigament(ligPat, pBottom, tibiaGroup.localToWorld(new THREE.Vector3(0, -0.62, 0.42)));
+}
+
+/* ============ 显隐控制 ============ */
+document.querySelectorAll('#partsPanel input[type=checkbox]').forEach((cb) => {
+  cb.addEventListener('change', () => {
+    const list = parts[cb.dataset.part] || [];
+    list.forEach((m) => { m.visible = cb.checked; });
+  });
+});
+
+/* ============ UI 交互 ============ */
+const slider = document.getElementById('angle');
+const angleVal = document.getElementById('angleVal');
+const playBtn = document.getElementById('playBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+let autoPlay = true;
+let phase = -Math.PI / 2;
+let currentTheta = 0;
+
+function syncUI() {
+  const deg = Math.round(currentTheta * 180 / Math.PI);
+  slider.value = deg;
+  angleVal.textContent = deg + '°';
+}
+
+slider.addEventListener('input', () => {
+  autoPlay = false;
+  playBtn.textContent = '▶ 自动演示';
+  playBtn.classList.remove('active');
+  currentTheta = slider.value * Math.PI / 180;
+  angleVal.textContent = slider.value + '°';
+});
+
+playBtn.addEventListener('click', () => {
+  autoPlay = !autoPlay;
+  playBtn.textContent = autoPlay ? '⏸ 暂停演示' : '▶ 自动演示';
+  playBtn.classList.toggle('active', autoPlay);
+});
+
+resetBtn.addEventListener('click', () => {
+  autoPlay = false;
+  playBtn.textContent = '▶ 自动演示';
+  playBtn.classList.remove('active');
+  phase = -Math.PI / 2;
+  currentTheta = 0;
+  syncUI();
+});
+
+/* ============ 渲染循环 ============ */
+let lastTime = performance.now();
+
+function animate(now) {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+
+  if (autoPlay) {
+    phase += dt * 1.15;
+    const k = (Math.sin(phase) + 1) * 0.5;
+    currentTheta = k * MAX_ANGLE;
+    syncUI();
+  }
+
+  updateKnee(currentTheta);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+updateKnee(0);
+syncUI();
+requestAnimationFrame(animate);
+
+/* ============ 自适应 ============ */
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html> coding here...
